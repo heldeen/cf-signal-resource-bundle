@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>net.eldeen.dropwizard</groupId>
+  <artifactId>cf-signal-resource-bundle</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <description>Dropwizard bundle to signal the AutoScalingGroup via CloudFormation SignalResource API when running on an AWS EC2 instance.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-core</artifactId>
+      <version>0.8.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-core</artifactId>
+      <version>${aws-java-sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-cloudformation</artifactId>
+      <version>${aws-java-sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>1.10.8</version>
+    </dependency>
+  </dependencies>
+
+  <properties>
+    <aws-java-sdk.version>1.9.35</aws-java-sdk.version>
+  </properties>
+
+</project>
