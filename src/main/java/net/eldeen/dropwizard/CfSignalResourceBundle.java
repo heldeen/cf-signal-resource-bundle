@@ -1,5 +1,7 @@
 package net.eldeen.dropwizard;
 
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClient;
 import com.amazonaws.services.cloudformation.model.ResourceSignalStatus;
@@ -20,17 +22,21 @@ public class CfSignalResourceBundle implements Bundle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CfSignalResourceBundle.class);
 
-  private final String logicalResourceId;
+  private final String asgResourceName;
   private final String stackName;
+  private final String awsRegion;
 
   /**
    * Create a bundle to signal the AutoScalingGroup via CloudFormation Signal
-   * @param logicalResourceId the name of the auto scaling group to signal
-   * @param stackName the name of the stack containing the auto scaling group to signal
+   *
+   * @param asgResourceName the name of the auto scaling group cloudformation resource to signal
+   * @param stackName       the name of the stack containing the auto scaling group to signal
+   * @param awsRegion       the aws region the stack is in, e.g. us-west-2
    */
-  public CfSignalResourceBundle(String logicalResourceId, String stackName) {
-    this.logicalResourceId = logicalResourceId;
+  public CfSignalResourceBundle(String asgResourceName, String stackName, String awsRegion) {
+    this.asgResourceName = asgResourceName;
     this.stackName = stackName;
+    this.awsRegion = awsRegion;
   }
 
   @Override
@@ -51,18 +57,18 @@ public class CfSignalResourceBundle implements Bundle {
       @Override
       public void serverStarted(Server server) {
         AmazonCloudFormation client = null;
-
         try {
           client = new AmazonCloudFormationClient();
+          client.setRegion(Region.getRegion(Regions.valueOf(awsRegion.toUpperCase().replace('-', '_'))));
           SignalResourceRequest request = new SignalResourceRequest();
           request.setUniqueId(instanceId);
-          request.setLogicalResourceId(logicalResourceId);
+          request.setLogicalResourceId(asgResourceName);
           request.setStackName(stackName);
           request.setStatus(ResourceSignalStatus.SUCCESS);
           client.signalResource(request);
         }
         catch (Exception e) {
-          LOGGER.error("There was a problem signalling " + logicalResourceId + " in stack " + stackName, e);
+          LOGGER.error("There was a problem signaling " + asgResourceName + " in stack " + stackName, e);
         }
         finally {
           if (client != null) {
@@ -70,7 +76,6 @@ public class CfSignalResourceBundle implements Bundle {
           }
         }
       }
-
     });
   }
 }
