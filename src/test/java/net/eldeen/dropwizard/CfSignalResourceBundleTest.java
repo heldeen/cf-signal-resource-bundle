@@ -29,7 +29,7 @@ public class CfSignalResourceBundleTest {
     final LifecycleEnvironment lifecycleEnvironment = mock(LifecycleEnvironment.class);
     when(environment.lifecycle()).thenReturn(lifecycleEnvironment);
 
-    new CfSignalResourceBundle("autoScalingGroup", "stackName").run(environment);
+    new CfSignalResourceBundle("autoScalingGroup", "stackName", "us-west-2").run(environment);
 
     verifyZeroInteractions(lifecycleEnvironment);
   }
@@ -41,7 +41,7 @@ public class CfSignalResourceBundleTest {
     final LifecycleEnvironment lifecycleEnvironment = mock(LifecycleEnvironment.class);
     when(environment.lifecycle()).thenReturn(lifecycleEnvironment);
 
-    new CfSignalResourceBundle("autoScalingGroup", "stackName").run(environment);
+    new CfSignalResourceBundle("autoScalingGroup", "stackName", "us-west-2").run(environment);
 
     verify(lifecycleEnvironment).addServerLifecycleListener(any(ServerLifecycleListener.class));
   }
