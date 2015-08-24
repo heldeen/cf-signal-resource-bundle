@@ -2,6 +2,7 @@ package net.eldeen.dropwizard;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import javax.inject.Inject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Optional;
@@ -58,7 +59,8 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
     };
   }
 
-  public CfSignalResourceBundle(Optional<String> instanceId, AmazonCloudFormation amazonCloudFormation) {
+  @Inject
+  public CfSignalResourceBundle(@CfSignalResourceInstanceId Optional<String> instanceId, AmazonCloudFormation amazonCloudFormation) {
     instanceIdProvider = () -> checkNotNull(instanceId);
     cloudFormationSupplier = (config) -> amazonCloudFormation;
   }

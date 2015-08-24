@@ -27,7 +27,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRule;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 public class CfSignalResourceBundleTest {
 
@@ -54,7 +55,7 @@ public class CfSignalResourceBundleTest {
   private ArgumentCaptor<CfSignalResourceBundle.CfSignalResourceLifcycleListener> listenerArgumentCaptor;
 
   @Rule
-  public MockitoJUnitRule mockitoJUnitRule = new MockitoJUnitRule(this);
+  public MockitoRule mockitoJUnitRule = MockitoJUnit.rule();
 
   @Before
   public void setupTestConfigWithDefaults() {
