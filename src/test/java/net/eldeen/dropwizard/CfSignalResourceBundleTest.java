@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import javax.validation.Valid;
-import java.util.Optional;
 
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.model.ResourceSignalStatus;
@@ -66,6 +65,7 @@ public class CfSignalResourceBundleTest {
     testConfig.cfSignalResourceConfig.setAsgResourceName("autoScalingGroup");
     testConfig.cfSignalResourceConfig.setStackName("stackName");
     testConfig.cfSignalResourceConfig.setAwsRegion("us-west-2");
+    testConfig.cfSignalResourceConfig.setEc2InstanceId("i-123");
   }
 
   @Before
@@ -77,16 +77,19 @@ public class CfSignalResourceBundleTest {
   public void testRunNoAWS() throws Exception {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
-    new CfSignalResourceBundle(Optional.empty(), amazonCloudFormation).run(testConfig, environment);
+    testConfig.cfSignalResourceConfig.setEc2InstanceId("");
 
-    verifyZeroInteractions(testConfig, lifecycleEnvironment, amazonCloudFormation);
+    new CfSignalResourceBundle(amazonCloudFormation).run(testConfig, environment);
+
+    verify(testConfig).getCfSignalResourceConfig();
+    verifyZeroInteractions(lifecycleEnvironment, amazonCloudFormation);
   }
 
   @Test
   public void testRunAWS() throws Exception {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
-    new CfSignalResourceBundle(Optional.of("i-123"), amazonCloudFormation).run(testConfig, environment);
+    new CfSignalResourceBundle(amazonCloudFormation).run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
     verify(lifecycleEnvironment).addLifeCycleListener(any(CfSignalResourceBundle.CfSignalResourceLifcycleListener.class));
@@ -97,9 +100,10 @@ public class CfSignalResourceBundleTest {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
     final String uniqueId = "i-123";
+    testConfig.cfSignalResourceConfig.setEc2InstanceId(uniqueId);
 
     CfSignalResourceBundle cfSignalResourceBundle =
-      new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation);
+      new CfSignalResourceBundle(amazonCloudFormation);
     cfSignalResourceBundle.run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
@@ -127,9 +131,10 @@ public class CfSignalResourceBundleTest {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
     final String uniqueId = "i-123";
+    testConfig.cfSignalResourceConfig.setEc2InstanceId(uniqueId);
 
     CfSignalResourceBundle cfSignalResourceBundle =
-      new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation);
+      new CfSignalResourceBundle(amazonCloudFormation);
     cfSignalResourceBundle.run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
@@ -159,7 +164,9 @@ public class CfSignalResourceBundleTest {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
     final String uniqueId = "i-123";
-    new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation).run(testConfig, environment);
+    testConfig.cfSignalResourceConfig.setEc2InstanceId(uniqueId);
+
+    new CfSignalResourceBundle(amazonCloudFormation).run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
 

@@ -8,7 +8,6 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
@@ -35,13 +34,13 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CfSignalResourceBundle.class);
 
-  private final Supplier<Optional<String>> instanceIdProvider;
+  private final Function<CfSignalResourceConfig, Optional<String>> instanceIdProvider = (cfSignalResourceConfig) -> Optional.ofNullable(
+    Strings.isNullOrEmpty(cfSignalResourceConfig.getEc2InstanceId())?
+    EC2MetadataUtils.getInstanceId() : cfSignalResourceConfig.getEc2InstanceId());
   private final Function<CfSignalResourceConfig, AmazonCloudFormation> cloudFormationSupplier;
   private final AtomicReference<AmazonCloudFormation> internalCloudFormation = new AtomicReference<>(null);
 
   public CfSignalResourceBundle() {
-    instanceIdProvider = () -> Optional.ofNullable(EC2MetadataUtils.getInstanceId());
-
     cloudFormationSupplier = (cfSignalResourceConfig) -> {
       AmazonCloudFormation amazonCloudFormation = internalCloudFormation.get();
 
@@ -69,10 +68,8 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
   }
 
   @Inject
-  public CfSignalResourceBundle(@CfSignalResourceInstanceId Optional<String> instanceId, AmazonCloudFormation amazonCloudFormation) {
-    checkNotNull(instanceId);
+  public CfSignalResourceBundle(AmazonCloudFormation amazonCloudFormation) {
     checkNotNull(amazonCloudFormation);
-    instanceIdProvider = () -> instanceId;
     cloudFormationSupplier = (config) -> amazonCloudFormation;
   }
 
@@ -92,7 +89,9 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
   @Override
   public void run(T config, Environment environment) {
 
-    final Optional<String> instanceId = instanceIdProvider.get();
+    final CfSignalResourceConfig cfSignalResourceConfig =
+      getConfiguration().orElseGet(() -> getCfResourceBundleConfig(config));
+    final Optional<String> instanceId = instanceIdProvider.apply(cfSignalResourceConfig);
     if (!instanceId.isPresent()) {
       LOGGER.debug("Unable to fetch EC2 Instance ID, assuming not running on AWS and thus not signalling");
       return;
@@ -100,7 +99,7 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
     environment.lifecycle()
                .addLifeCycleListener(
-                 new CfSignalResourceLifcycleListener(getConfiguration().orElseGet(()->getCfResourceBundleConfig(config)),
+                 new CfSignalResourceLifcycleListener(cfSignalResourceConfig,
                                                       instanceId.get()));
   }
 
@@ -147,7 +146,7 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
         }
       }
     }
-    return null;
+    throw new IllegalStateException("config must either be provided via getConfiguration() in the Application Configuration");
   }
 
   @VisibleForTesting

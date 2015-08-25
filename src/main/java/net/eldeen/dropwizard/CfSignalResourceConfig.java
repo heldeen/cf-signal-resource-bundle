@@ -25,14 +25,21 @@ import org.hibernate.validator.constraints.NotBlank;
  *     <td>Name of your <a href="http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html">Auto Scaling Group</a></td>
  *   </tr>
  *   <tr>
- *       <td>{@code stackName}</td>
- *       <td>none</td>
- *       <td>Name of the <a href="http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-stackname">AWS Cloudformation Stack</a></td>
+ *     <td>{@code stackName}</td>
+ *     <td>none</td>
+ *     <td>Name of the <a href="http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-stackname">AWS Cloudformation Stack</a></td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code ec2InstanceId}</td>
+ *     <td>The current EC2 Instance ID via {@link EC2MetadataUtils#getInstanceId()}. Only works when
+ *     running on an EC2 Instance.</td>
+ *     <td>Specify the EC2 Instance ID if you don't want it automatically looked up.</td>
  *   </tr>
  *   <tr>
  *     <td>{@code awsRegion}</td>
  *     <td>The current region of the EC2 Instance via {@link EC2MetadataUtils#getEC2InstanceRegion()}. Only works when
  *     running on an EC2 Instance.</td>
+ *     <td>Specify the EC2 Instance Region if you don't want it automatically looked up.</td>
  *   </tr>
  * </table>
  *
@@ -48,6 +55,8 @@ public class CfSignalResourceConfig extends Configuration {
   @Valid
   @NotBlank
   private String stackName;
+
+  private String ec2InstanceId;
 
   private String awsRegion;
 
@@ -69,6 +78,16 @@ public class CfSignalResourceConfig extends Configuration {
   @JsonProperty
   public void setStackName(final String stackName) {
     this.stackName = stackName;
+  }
+
+  @JsonProperty
+  public String getEc2InstanceId() {
+    return ec2InstanceId;
+  }
+
+  @JsonProperty
+  public void setEc2InstanceId(final String ec2InstanceId) {
+    this.ec2InstanceId = ec2InstanceId;
   }
 
   @JsonProperty
