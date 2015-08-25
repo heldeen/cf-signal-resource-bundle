@@ -3,6 +3,9 @@ package net.eldeen.dropwizard;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.mock;
@@ -62,7 +65,7 @@ public class CfSignalResourceBundleTest {
     testConfig.cfSignalResourceConfig = new CfSignalResourceConfig();
     testConfig.cfSignalResourceConfig.setAsgResourceName("autoScalingGroup");
     testConfig.cfSignalResourceConfig.setStackName("stackName");
-    testConfig.cfSignalResourceConfig.setAwsRegion("region");
+    testConfig.cfSignalResourceConfig.setAwsRegion("us-west-2");
   }
 
   @Before
@@ -76,9 +79,7 @@ public class CfSignalResourceBundleTest {
 
     new CfSignalResourceBundle(Optional.empty(), amazonCloudFormation).run(testConfig, environment);
 
-    verifyZeroInteractions(testConfig);
-    verifyZeroInteractions(lifecycleEnvironment);
-    verifyZeroInteractions(amazonCloudFormation);
+    verifyZeroInteractions(testConfig, lifecycleEnvironment, amazonCloudFormation);
   }
 
   @Test
@@ -96,7 +97,10 @@ public class CfSignalResourceBundleTest {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
     final String uniqueId = "i-123";
-    new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation).run(testConfig, environment);
+
+    CfSignalResourceBundle cfSignalResourceBundle =
+      new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation);
+    cfSignalResourceBundle.run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
 
@@ -114,6 +118,8 @@ public class CfSignalResourceBundleTest {
             hasProperty("stackName", equalTo(testConfig.getCfSignalResourceConfig().getStackName())),
             hasProperty("logicalResourceId", equalTo(testConfig.getCfSignalResourceConfig().getAsgResourceName())),
             hasProperty("uniqueId", equalTo(uniqueId)))));
+
+    assertThat(cfSignalResourceBundle.getInternalCloudFormation(), nullValue());
   }
 
   @Test
@@ -121,7 +127,10 @@ public class CfSignalResourceBundleTest {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
     final String uniqueId = "i-123";
-    new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation).run(testConfig, environment);
+
+    CfSignalResourceBundle cfSignalResourceBundle =
+      new CfSignalResourceBundle(Optional.of(uniqueId), amazonCloudFormation);
+    cfSignalResourceBundle.run(testConfig, environment);
 
     verify(testConfig).getCfSignalResourceConfig();
 
@@ -141,6 +150,8 @@ public class CfSignalResourceBundleTest {
             hasProperty("stackName", equalTo(testConfig.getCfSignalResourceConfig().getStackName())),
             hasProperty("logicalResourceId", equalTo(testConfig.getCfSignalResourceConfig().getAsgResourceName())),
             hasProperty("uniqueId", equalTo(uniqueId)))));
+
+    assertThat(cfSignalResourceBundle.getInternalCloudFormation(), nullValue());
   }
 
   @Test
@@ -159,6 +170,12 @@ public class CfSignalResourceBundleTest {
     when(event.isStopped()).thenReturn(Boolean.FALSE);
 
     verifyZeroInteractions(amazonCloudFormation);
+  }
+
+  @Test
+  public void useInternalAmazonCloudformationClient() {
+    CfSignalResourceBundle<Configuration> cfSignalResourceBundle = new CfSignalResourceBundle<>();
+    assertSame(cfSignalResourceBundle.getCloudFormation(testConfig.cfSignalResourceConfig), cfSignalResourceBundle.getInternalCloudFormation());
   }
 
 }

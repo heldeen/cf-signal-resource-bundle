@@ -17,6 +17,8 @@ import com.amazonaws.services.cloudformation.AmazonCloudFormationClient;
 import com.amazonaws.services.cloudformation.model.ResourceSignalStatus;
 import com.amazonaws.services.cloudformation.model.SignalResourceRequest;
 import com.amazonaws.util.EC2MetadataUtils;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import io.dropwizard.Configuration;
 import io.dropwizard.ConfiguredBundle;
@@ -35,25 +37,32 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
   private final Supplier<Optional<String>> instanceIdProvider;
   private final Function<CfSignalResourceConfig, AmazonCloudFormation> cloudFormationSupplier;
-  private final AtomicReference<AmazonCloudFormation> cloudFormationAtomicRef = new AtomicReference<>(null);
+  private final AtomicReference<AmazonCloudFormation> internalCloudFormation = new AtomicReference<>(null);
 
   public CfSignalResourceBundle() {
     instanceIdProvider = () -> Optional.ofNullable(EC2MetadataUtils.getInstanceId());
 
     cloudFormationSupplier = (cfSignalResourceConfig) -> {
-      AmazonCloudFormation amazonCloudFormation = cloudFormationAtomicRef.get();
+      AmazonCloudFormation amazonCloudFormation = internalCloudFormation.get();
 
       if (amazonCloudFormation != null) {
         return amazonCloudFormation;
       }
 
-      return cloudFormationAtomicRef.updateAndGet((unused) -> {
+      return internalCloudFormation.updateAndGet((unused) -> {
 
         AmazonCloudFormationClient amazonCloudFormationClient = new AmazonCloudFormationClient();
 
-        amazonCloudFormationClient.setRegion(Region.getRegion(Regions.valueOf(cfSignalResourceConfig.getAwsRegion()
-                                                                                                    .toUpperCase()
-                                                                                                    .replace('-', '_'))));
+        String awsRegion = cfSignalResourceConfig.getAwsRegion();
+        Region region;
+        if (Strings.isNullOrEmpty(awsRegion)) {
+          region = Regions.getCurrentRegion();
+        }
+        else {
+          region = Region.getRegion(Regions.fromName(awsRegion));
+        }
+        amazonCloudFormationClient.setRegion(region);
+
         return amazonCloudFormationClient;
       });
     };
@@ -61,7 +70,9 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
   @Inject
   public CfSignalResourceBundle(@CfSignalResourceInstanceId Optional<String> instanceId, AmazonCloudFormation amazonCloudFormation) {
-    instanceIdProvider = () -> checkNotNull(instanceId);
+    checkNotNull(instanceId);
+    checkNotNull(amazonCloudFormation);
+    instanceIdProvider = () -> instanceId;
     cloudFormationSupplier = (config) -> amazonCloudFormation;
   }
 
@@ -69,8 +80,13 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
   public void initialize(Bootstrap<?> bootstrap) {
   }
 
-  public CfSignalResourceConfig getConfiguration() {
-    return new CfSignalResourceConfig();
+  /**
+   * Override this method to specify a {@link CfSignalResourceConfig}. Otherwise the config will be fetched from
+   * {@linkplain T} when {@link #run(Configuration, Environment)} runs.
+   * @return an {@link Optional} containing the config if it exists, by default {@link Optional#empty()}
+   */
+  protected Optional<CfSignalResourceConfig> getConfiguration() {
+    return Optional.empty();
   }
 
   @Override
@@ -84,7 +100,7 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
     environment.lifecycle()
                .addLifeCycleListener(
-                 new CfSignalResourceLifcycleListener(getCfResourceBundleConfig(config).orElseGet(this::getConfiguration),
+                 new CfSignalResourceLifcycleListener(getConfiguration().orElseGet(()->getCfResourceBundleConfig(config)),
                                                       instanceId.get()));
   }
 
@@ -103,19 +119,25 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
                    + " in stack " + config.getStackName(), e);
     }
     finally {
-      AmazonCloudFormation internalClient = cloudFormationAtomicRef.get();
+      AmazonCloudFormation internalClient = internalCloudFormation.get();
       if (internalClient != null) {
-        internalClient.shutdown();
+        try {
+          internalClient.shutdown();
+        }
+        catch (Exception e) {
+          //an internal client shouldn't affect anyone else
+          LOGGER.debug("problem closing the internal AmazonCloudFormation client", e);
+        }
       }
     }
   }
 
-  private Optional<CfSignalResourceConfig> getCfResourceBundleConfig(final T config) {
+  private CfSignalResourceConfig getCfResourceBundleConfig(final T config) {
     for (Method method : config.getClass().getMethods()) {
       if (CfSignalResourceConfig.class.equals(method.getReturnType())
         && method.getParameterCount() == 0) {
         try {
-          return Optional.ofNullable((CfSignalResourceConfig) method.invoke(config, new Object[0]));
+          return (CfSignalResourceConfig) method.invoke(config);
         }
         catch (IllegalAccessException e) {
           throw new RuntimeException("method exposing CfSignResourceConfig must be accessible", e);
@@ -125,9 +147,20 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
         }
       }
     }
-    return Optional.empty();
+    return null;
   }
 
+  @VisibleForTesting
+  /*package-private*/ AmazonCloudFormation getInternalCloudFormation() {
+    return internalCloudFormation.get();
+  }
+
+  @VisibleForTesting
+  /*package-private*/ AmazonCloudFormation getCloudFormation(final CfSignalResourceConfig config) {
+    return cloudFormationSupplier.apply(config);
+  }
+
+  @VisibleForTesting
   class CfSignalResourceLifcycleListener implements LifeCycle.Listener {
 
     private final CfSignalResourceConfig cfSignalResourceConfig;
