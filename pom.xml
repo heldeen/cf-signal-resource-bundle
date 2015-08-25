@@ -7,10 +7,12 @@
   <groupId>net.eldeen.dropwizard</groupId>
   <artifactId>cf-signal-resource-bundle</artifactId>
   <version>2.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
   <description>Dropwizard bundle to signal the AutoScalingGroup via CloudFormation SignalResource API when running on an AWS EC2 instance.</description>
+  <url>https://github.com/heldeen/cf-signal-resource-bundle</url>
 
   <properties>
-    <aws-java-sdk.version>1.10.9</aws-java-sdk.version>
+    <aws-java-sdk.version>1.10.12</aws-java-sdk.version>
   </properties>
 
   <dependencies>
@@ -27,11 +29,6 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-cloudformation</artifactId>
-      <version>${aws-java-sdk.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-autoscaling</artifactId>
       <version>${aws-java-sdk.version}</version>
     </dependency>
     <dependency>
@@ -75,6 +72,95 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>ossrh</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>2.9.1</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.5</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+  <scm>
+    <connection>scm:git:git@github.com:heldeen/cf-signal-resource-bundle.git</connection>
+    <developerConnection>scm:git:git@github.com:heldeen/cf-signal-resource-bundle.git</developerConnection>
+    <url>git@github.com:heldeen/cf-signal-resource-bundle.git</url>
+  </scm>
+  <developers>
+    <developer>
+      <id>heath.eldeen</id>
+      <name>Heath Eldeen</name>
+      <email>heath.eldeen@gmail.com</email>
+      <url>http://eldeen.net</url>
+      <roles>
+        <role>architect</role>
+        <role>developer</role>
+      </roles>
+      <timezone>-7</timezone>
+      <properties>
+        <picUrl>http://www.gravatar.com/avatar/0f21c0579bf7bff00ceb387360f8ec00.png</picUrl>
+      </properties>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
 </project>

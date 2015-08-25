@@ -8,7 +8,7 @@ Dropwizard bundle to signal the AWS AutoScalingGroup via the AWS CloudFormation 
     <dependency>
       <groupId>net.eldeen.dropwizard</groupId>
       <artifactId>cf-signal-resource-bundle</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>2.0</version>
     <dependency>
 
 ### Example Usage ###

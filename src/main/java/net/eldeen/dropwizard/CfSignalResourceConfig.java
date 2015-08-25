@@ -8,10 +8,12 @@ import io.dropwizard.Configuration;
 import org.hibernate.validator.constraints.NotBlank;
 
 /**
+ * <p>
  * config for {@link CfSignalResourceBundle}.
- * <p/>
+ * </p>
  * <b>Configuration Parameters:</b>
  * <table>
+ *   <caption>Configuration Parameters</caption>
  *   <tr>
  *     <td>Name</td>
  *     <td>Default</td>
