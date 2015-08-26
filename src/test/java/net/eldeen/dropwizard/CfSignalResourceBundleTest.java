@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -16,7 +17,10 @@ import static org.mockito.Mockito.when;
 import javax.validation.Valid;
 
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
+import com.amazonaws.services.cloudformation.model.DescribeStackResourceResult;
 import com.amazonaws.services.cloudformation.model.ResourceSignalStatus;
+import com.amazonaws.services.cloudformation.model.ResourceStatus;
+import com.amazonaws.services.cloudformation.model.StackResourceDetail;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Configuration;
 import io.dropwizard.lifecycle.setup.LifecycleEnvironment;
@@ -96,6 +100,38 @@ public class CfSignalResourceBundleTest {
   }
 
   @Test
+  public void lifecycleListenerDoesNotSignalOutsideCloudFormationUpdate() throws Exception {
+    AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
+
+    final String uniqueId = "i-123";
+    testConfig.cfSignalResourceConfig.setEc2InstanceId(uniqueId);
+
+    CfSignalResourceBundle cfSignalResourceBundle = new CfSignalResourceBundle(amazonCloudFormation);
+
+    cfSignalResourceBundle.run(testConfig, environment);
+
+    verify(testConfig).getCfSignalResourceConfig();
+
+    verify(lifecycleEnvironment).addLifeCycleListener(listenerArgumentCaptor.capture());
+
+    when(amazonCloudFormation.describeStackResource(any())).thenReturn(
+        new DescribeStackResourceResult().withStackResourceDetail(
+            new StackResourceDetail().withResourceStatus(ResourceStatus.UPDATE_COMPLETE)));
+
+    listenerArgumentCaptor.getValue().lifeCycleStarted(mock(LifeCycle.class));
+
+    verify(amazonCloudFormation)
+      .describeStackResource(
+          argThat(
+            allOf(
+              hasProperty("stackName", equalTo(testConfig.getCfSignalResourceConfig().getStackName())),
+              hasProperty("logicalResourceId", equalTo(testConfig.getCfSignalResourceConfig().getAsgResourceName())))));
+    verify(amazonCloudFormation, never()).signalResource(any());
+
+    assertThat(cfSignalResourceBundle.getInternalCloudFormation(), nullValue());
+  }
+
+  @Test
   public void lifecycleListenerSignalsSuccess() throws Exception {
     AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
 
@@ -110,10 +146,21 @@ public class CfSignalResourceBundleTest {
 
     verify(lifecycleEnvironment).addLifeCycleListener(listenerArgumentCaptor.capture());
 
+    when(amazonCloudFormation.describeStackResource(any())).thenReturn(
+        new DescribeStackResourceResult().withStackResourceDetail(
+            new StackResourceDetail().withResourceStatus(ResourceStatus.UPDATE_IN_PROGRESS)));
+
     LifeCycle event = mock(LifeCycle.class);
 
     listenerArgumentCaptor.getValue().lifeCycleStarted(event);
 
+    verify(amazonCloudFormation)
+      .describeStackResource(
+          argThat(
+              allOf(
+                  hasProperty("stackName", equalTo(testConfig.getCfSignalResourceConfig().getStackName())),
+                  hasProperty("logicalResourceId",
+                              equalTo(testConfig.getCfSignalResourceConfig().getAsgResourceName())))));
     verify(amazonCloudFormation)
       .signalResource(
         argThat(
@@ -141,12 +188,22 @@ public class CfSignalResourceBundleTest {
 
     verify(lifecycleEnvironment).addLifeCycleListener(listenerArgumentCaptor.capture());
 
+    when(amazonCloudFormation.describeStackResource(any())).thenReturn(
+        new DescribeStackResourceResult().withStackResourceDetail(
+            new StackResourceDetail().withResourceStatus(ResourceStatus.CREATE_IN_PROGRESS)));
+
     LifeCycle event = mock(LifeCycle.class);
     when(event.isStopping()).thenReturn(Boolean.FALSE);
     when(event.isStopped()).thenReturn(Boolean.FALSE);
 
     listenerArgumentCaptor.getValue().lifeCycleFailure(event, new Throwable("testing"));
 
+    verify(amazonCloudFormation)
+      .describeStackResource(
+        argThat(
+          allOf(
+            hasProperty("stackName", equalTo(testConfig.getCfSignalResourceConfig().getStackName())),
+            hasProperty("logicalResourceId", equalTo(testConfig.getCfSignalResourceConfig().getAsgResourceName())))));
     verify(amazonCloudFormation)
       .signalResource(
         argThat(

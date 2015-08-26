@@ -1,5 +1,7 @@
 package net.eldeen.dropwizard;
 
+import static com.amazonaws.services.cloudformation.model.ResourceStatus.CREATE_IN_PROGRESS;
+import static com.amazonaws.services.cloudformation.model.ResourceStatus.UPDATE_IN_PROGRESS;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import javax.inject.Inject;
@@ -13,7 +15,10 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClient;
+import com.amazonaws.services.cloudformation.model.DescribeStackResourceRequest;
+import com.amazonaws.services.cloudformation.model.DescribeStackResourceResult;
 import com.amazonaws.services.cloudformation.model.ResourceSignalStatus;
+import com.amazonaws.services.cloudformation.model.ResourceStatus;
 import com.amazonaws.services.cloudformation.model.SignalResourceRequest;
 import com.amazonaws.util.EC2MetadataUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -103,12 +108,25 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
   private void sendSignal(CfSignalResourceConfig config, final String instanceId, boolean success) {
     try {
       AmazonCloudFormation client = cloudFormationSupplier.apply(config);
-      SignalResourceRequest request = new SignalResourceRequest();
-      request.setUniqueId(instanceId);
-      request.setLogicalResourceId(config.getAsgResourceName());
-      request.setStackName(config.getStackName());
-      request.setStatus(success? ResourceSignalStatus.SUCCESS : ResourceSignalStatus.FAILURE);
-      client.signalResource(request);
+
+      DescribeStackResourceResult asgResource = client.describeStackResource(
+          new DescribeStackResourceRequest()
+              .withStackName(config.getStackName())
+              .withLogicalResourceId(config.getAsgResourceName()));
+      ResourceStatus status = ResourceStatus.fromValue(asgResource.getStackResourceDetail().getResourceStatus());
+
+      if (status == CREATE_IN_PROGRESS || status == UPDATE_IN_PROGRESS) {
+        SignalResourceRequest request = new SignalResourceRequest();
+        request.setUniqueId(instanceId);
+        request.setLogicalResourceId(config.getAsgResourceName());
+        request.setStackName(config.getStackName());
+        request.setStatus(success? ResourceSignalStatus.SUCCESS : ResourceSignalStatus.FAILURE);
+        client.signalResource(request);
+      }
+      else {
+        LOGGER.debug("No CloudFormation update in progress on " + config.getAsgResourceName()
+                         + ". Assuming an auto-scaling event is in progress, and thus not signalling.");
+      }
     }
     catch (Exception e) {
       LOGGER.error("There was a problem signaling " + config.getAsgResourceName()
