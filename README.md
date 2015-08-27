@@ -3,7 +3,57 @@ cf-signal-resource-bundle
 
 Dropwizard bundle to signal the AWS AutoScalingGroup via the AWS CloudFormation SignalResource API when running on an AWS EC2 instance.
 
+## Why does this exist ##
+
+If you're deploying [Dropwizard](http://dropwizard.io) webservices on AWS using [CloudFormation Templates](https://aws.amazon.com/cloudformation/) and [AutoScaling Groups](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html) with [Rolling Updates](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatepolicy.html) then this is the bundle you've been looking for!
+
+In short it makes your time to perform a rolling deploy as short as possible as it only depends on how fast your app can start. It's very handy when you app needs to do some work at startup sometimes (database migrations, provisioning, etc), but not others. 
+
+## How to Use this bundle ##
+
+### CloudFormation Template ###
+
+The key here is to set the `Resources.<YourASG_Name>.UpdatePolicy.WaitOnResourceSignals` to `true`. You can read up on what that means exactly [here](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatepolicy.html#cfn-attributes-updatepolicy-rollingupdate-waitonresourcesignals) but the TL;DR is have the rolling update wait until signaled that everything worked to continue. This bundle provides that signaling!
+    
+    {
+      "AWSTemplateFormatVersion" : "2010-09-09",
+      "Description" : "AWS CloudFormation for a Dropwizard.io Webservice using instances in a AutoScalingGroup.",
+      "Parameters" : {...},
+      "Resources" : {
+        "DropwizardWebserviceASG" : {
+          "Type" : "AWS::AutoScaling::AutoScalingGroup",
+          "UpdatePolicy" : {
+            "AutoScalingRollingUpdate": {
+              "MaxBatchSize": "2",
+              "MinInstancesInService": 2,
+              "PauseTime": "PT10M",
+              "SuspendProcesses": [
+                "HealthCheck",
+                "ReplaceUnhealthy",
+                "AZRebalance",
+                "AlarmNotification",
+                "ScheduledActions"
+              ],
+              "WaitOnResourceSignals": "true"
+            }
+          },
+          "Properties" : {
+            "AvailabilityZones" : [
+              "us-west-2a",
+              "us-west-2b"
+            ],
+            "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+            "MinSize" : 2,
+            "MaxSize" : 8
+          }
+        },
+        {...other resources}
+      }
+    }
+
 ### Maven Dependency ###
+
+Add this to your Dropwizard Webservice pom.xml.
 
     <dependency>
       <groupId>net.eldeen.dropwizard</groupId>
@@ -11,7 +61,7 @@ Dropwizard bundle to signal the AWS AutoScalingGroup via the AWS CloudFormation 
       <version>2.0</version>
     <dependency>
 
-### Example Usage ###
+### Registering the Bundle ###
 
 In the class that extends `io.dropwizard.Application` add the bundle. Use config to provide the name of the [AutoScalingGroup](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html),
 the [Stack Name](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-stackname), and the [AWS Region](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-region).
@@ -77,6 +127,6 @@ from above.
       asgResourceName: ${ASG_RESOURCE_NAME}
       stackName: ${ASG_STACK_NAME:-yourASG_StackName}
 
-### License ###
+## License ##
 
 [Apache License Version 2.0](LICENSE.md)
