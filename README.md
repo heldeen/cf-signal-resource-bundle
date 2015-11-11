@@ -83,7 +83,7 @@ And in your application's Dropwizard Config add
     public class AppConfig extends Configuration {
     
         @Valid
-        private CfSignalResourceConfig cfSignalResourceConfig;
+        private CfSignalResourceConfig cfSignalResource;
     
         @JsonProperty
         public CfSignalResourceConfig getCfSignalResource() {
@@ -93,7 +93,7 @@ And in your application's Dropwizard Config add
         // [...]
       }
     
-And add the actual config values to your configuration yml. The config value `asgRegion` is optional as it will be fetched from
+And add the actual config values to your configuration yml. The config value `awsRegion` is optional as it will be fetched from
 [EC2MetadataUtils#getEC2InstanceRegion()](https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-core/src/main/java/com/amazonaws/util/EC2MetadataUtils.java)
  
     cfSignalResource:
