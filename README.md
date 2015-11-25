@@ -58,7 +58,7 @@ Add this to your Dropwizard Webservice pom.xml.
     <dependency>
       <groupId>net.eldeen.dropwizard</groupId>
       <artifactId>cf-signal-resource-bundle</artifactId>
-      <version>2.0</version>
+      <version>2.1</version>
     <dependency>
 
 ### Registering the Bundle ###
