@@ -7,6 +7,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import javax.inject.Inject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -93,9 +94,15 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
 
     final CfSignalResourceConfig cfSignalResourceConfig =
       getConfiguration().orElseGet(() -> getCfResourceBundleConfig(config));
+
+    if (cfSignalResourceConfig.isSkip()) {
+      LOGGER.info("Skipping signalling because CfSignalResourceConfig configuration value 'skip == true'");
+      return;
+    }
+
     final Optional<String> instanceId = getInstanceId(cfSignalResourceConfig);
     if (!instanceId.isPresent()) {
-      LOGGER.debug("Unable to fetch EC2 Instance ID, assuming not running on AWS and thus not signalling");
+      LOGGER.warn("Unable to fetch EC2 Instance ID, assuming not running on AWS and thus not signalling");
       return;
     }
 
@@ -124,13 +131,13 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
         client.signalResource(request);
       }
       else {
-        LOGGER.debug("No CloudFormation update in progress on " + config.getAsgResourceName()
-                         + ". Assuming an auto-scaling event is in progress, and thus not signalling.");
+        LOGGER.debug("No CloudFormation update in progress on ASG '" + config.getAsgResourceName()
+                         + "'. Assuming an auto-scaling event is in progress, and thus not signalling.");
       }
     }
     catch (Exception e) {
-      LOGGER.error("There was a problem signaling " + config.getAsgResourceName()
-                   + " in stack " + config.getStackName(), e);
+      LOGGER.error("There was a problem signaling ASG `" + config.getAsgResourceName()
+                   + " in CloudFormation Stack '" + config.getStackName() + "'", e);
     }
     finally {
       AmazonCloudFormation internalClient = internalCloudFormation.get();
@@ -151,17 +158,22 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
       if (CfSignalResourceConfig.class.equals(method.getReturnType())
         && method.getParameterCount() == 0) {
         try {
-          return (CfSignalResourceConfig) method.invoke(config);
+          final Object cfResourceBundleConfig = method.invoke(config);
+          if (Objects.isNull(cfResourceBundleConfig)) {
+            throw new IllegalStateException("when called, the method exposing 'CfSignResourceConfig' in config returned a null value");
+          }
+          return (CfSignalResourceConfig) cfResourceBundleConfig;
         }
         catch (IllegalAccessException e) {
-          throw new RuntimeException("method exposing CfSignResourceConfig must be accessible", e);
+          throw new RuntimeException("method exposing 'CfSignResourceConfig' must be accessible", e);
         }
         catch (InvocationTargetException e) {
           Throwables.propagate(e);
         }
       }
     }
-    throw new IllegalStateException("config must either be provided via getConfiguration() in the Application Configuration");
+    throw new IllegalStateException("config 'CfSignalResourceConfig' must either be provided by overriding 'getConfiguration()' or via"
+                                      + " the Application Configuration '" + config.getClass() + "'");
   }
 
   private Optional<String> getInstanceId(CfSignalResourceConfig cfSignalResourceConfig) {

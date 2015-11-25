@@ -1,11 +1,12 @@
 package net.eldeen.dropwizard;
 
 import javax.validation.Valid;
+import javax.validation.constraints.AssertTrue;
 
 import com.amazonaws.util.EC2MetadataUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Strings;
 import io.dropwizard.Configuration;
-import org.hibernate.validator.constraints.NotBlank;
 
 /**
  * <p>
@@ -41,24 +42,45 @@ import org.hibernate.validator.constraints.NotBlank;
  *     running on an EC2 Instance.</td>
  *     <td>Specify the EC2 Instance Region if you don't want it automatically looked up.</td>
  *   </tr>
+ *   <tr>
+ *     <td>{@code skip}</td>
+ *     <td>{@code false}</td>
+ *     <td>If this bundle should skip running altogether; useful for cases where a single artifact is run in both AWS
+ *     and non-AWS environments. When {@code true}, the bundle then ignores all other normally required properties thus
+ *     they are optional.</td>
+ *   </tr>
  * </table>
  *
- * The asgResourcename and stackName are required. The awsRegion is optional as it's default is
- * {@link EC2MetadataUtils#getEC2InstanceRegion()}
+ * The {@code asgResourcename} and {@code stackName} are required. The {@code awsRegion} and {@code ec2InstanceId} are
+ * optional as the defaults are {@link EC2MetadataUtils#getInstanceId()} {@link EC2MetadataUtils#getEC2InstanceRegion()}
  */
 public class CfSignalResourceConfig extends Configuration {
 
   @Valid
-  @NotBlank
+  private boolean skip = false;
+
   private String asgResourceName;
 
-  @Valid
-  @NotBlank
   private String stackName;
 
   private String ec2InstanceId;
 
   private String awsRegion;
+
+  @AssertTrue(message = "both 'asgResourceName' and 'stackName' must not be blank when 'skip == false'")
+  private boolean isValid() {
+    return skip || !Strings.isNullOrEmpty(asgResourceName) && !Strings.isNullOrEmpty(stackName);
+  }
+
+  @JsonProperty
+  public boolean isSkip() {
+    return skip;
+  }
+
+  @JsonProperty
+  public void setSkip(final boolean skip) {
+    this.skip = skip;
+  }
 
   @JsonProperty
   public String getAsgResourceName() {

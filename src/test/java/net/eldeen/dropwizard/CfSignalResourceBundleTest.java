@@ -54,6 +54,7 @@ public class CfSignalResourceBundleTest {
 
   @Mock
   private Environment environment;
+
   @Mock
   private LifecycleEnvironment lifecycleEnvironment;
 
@@ -75,6 +76,20 @@ public class CfSignalResourceBundleTest {
   @Before
   public void setupLifeCycleEnvironment() {
     when(environment.lifecycle()).thenReturn(lifecycleEnvironment);
+  }
+
+  @Test
+  public void testSkip() {
+    testConfig.cfSignalResourceConfig.setSkip(true);
+//  purposefully null this to test for NPE
+    testConfig.cfSignalResourceConfig.setStackName(null);
+
+    AmazonCloudFormation amazonCloudFormation = mock(AmazonCloudFormation.class);
+
+    new CfSignalResourceBundle(amazonCloudFormation).run(testConfig, environment);
+
+    verifyZeroInteractions(amazonCloudFormation, lifecycleEnvironment);
+    verify(testConfig).getCfSignalResourceConfig();
   }
 
   @Test
