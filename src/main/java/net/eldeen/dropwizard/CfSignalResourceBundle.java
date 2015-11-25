@@ -160,12 +160,12 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
         try {
           final Object cfResourceBundleConfig = method.invoke(config);
           if (Objects.isNull(cfResourceBundleConfig)) {
-            throw new IllegalStateException("when called, the method exposing 'CfSignResourceConfig' in config returned a null value");
+            throw new IllegalStateException("when called, the method exposing 'CfSignalResourceConfig' in config returned a null value");
           }
           return (CfSignalResourceConfig) cfResourceBundleConfig;
         }
         catch (IllegalAccessException e) {
-          throw new RuntimeException("method exposing 'CfSignResourceConfig' must be accessible", e);
+          throw new RuntimeException("method exposing 'CfSignalResourceConfig' must be accessible", e);
         }
         catch (InvocationTargetException e) {
           Throwables.propagate(e);
