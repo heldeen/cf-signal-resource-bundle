@@ -51,6 +51,12 @@ The key here is to set the `Resources.<YourASG_Name>.UpdatePolicy.WaitOnResource
       }
     }
 
+The credentials used by your CloudFormation client need to have the following permissions:
+
+* cloudformation:DescribeStackResource
+  * Used to confirm that a stack update is in progress, before attempting to signal the resource state. 
+* cloudformation:SignalResource
+
 ### Maven Dependency ###
 
 Add this to your Dropwizard Webservice pom.xml.
