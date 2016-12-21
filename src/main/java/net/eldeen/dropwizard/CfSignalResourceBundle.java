@@ -123,6 +123,8 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
       ResourceStatus status = ResourceStatus.fromValue(asgResource.getStackResourceDetail().getResourceStatus());
 
       if (status == CREATE_IN_PROGRESS || status == UPDATE_IN_PROGRESS) {
+        LOGGER.info("Signalling ready status to ASG '{}'",
+                    config.getAsgResourceName());
         SignalResourceRequest request = new SignalResourceRequest();
         request.setUniqueId(instanceId);
         request.setLogicalResourceId(config.getAsgResourceName());
@@ -131,8 +133,8 @@ public class CfSignalResourceBundle<T extends Configuration> implements Configur
         client.signalResource(request);
       }
       else {
-        LOGGER.debug("No CloudFormation update in progress on ASG '" + config.getAsgResourceName()
-                         + "'. Assuming an auto-scaling event is in progress, and thus not signalling.");
+        LOGGER.info("No CloudFormation update in progress on ASG '{}'. Assuming an auto-scaling event is in progress, and thus not signalling.",
+                     config.getAsgResourceName());
       }
     }
     catch (Exception e) {
